@@ -595,7 +595,13 @@ export default function AdminSchedule() {
                         <span className="text-sm text-gray-500">{week.date}</span>
                         <StatusBadge status={week.status} />
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-4">
+                      <div className="flex items-center gap-2 shrink-0 ml-4 flex-wrap">
+                        <button
+                          onClick={() => navigate(`/admin/scores/${week.id}`)}
+                          className="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-800"
+                        >
+                          Enter Scores
+                        </button>
                         <button
                           onClick={() => handleOpenGenerator(week.id)}
                           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
