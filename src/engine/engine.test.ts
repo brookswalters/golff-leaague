@@ -6,7 +6,7 @@ import { calculateSkins } from './skins'
 import { classifyScore, aggregateStats } from './stats'
 import { ghostNetScore } from './ghost'
 import { ROUND_HOLES, PHYSICAL_HOLES, COURSE_PAR } from './course'
-import { MatchPlayer, SkinEntry, HoleScore } from './types'
+import type { MatchPlayer, SkinEntry, HoleScore } from './types'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -568,7 +568,6 @@ describe('classifyScore', () => {
   })
 
   it('only one classification flag set at a time (non HIO case)', () => {
-    const tests: [number, number, keyof typeof classifyScore][] = []
     // Just verify each score maps to exactly one non-HIO category
     const scores = [
       { gross: 2, par: 5, expected: 'albatross' },

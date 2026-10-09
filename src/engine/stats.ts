@@ -1,4 +1,4 @@
-import { ScoreClassification, PlayerStats, HoleScore } from './types'
+import type { ScoreClassification, PlayerStats, HoleScore } from './types'
 import { ROUND_HOLES } from './course'
 
 /**

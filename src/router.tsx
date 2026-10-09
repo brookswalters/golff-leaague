@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import AppLayout from './layouts/AppLayout'
 import AdminLayout from './layouts/AdminLayout'
+import AdminGuard from './components/AdminGuard'
 import Home from './pages/Home'
 import Standings from './pages/Standings'
 import Schedule from './pages/Schedule'
@@ -9,6 +10,7 @@ import Skins from './pages/Skins'
 import Stats from './pages/Stats'
 import Players from './pages/Players'
 import AdminHome from './pages/admin/AdminHome'
+import AdminLogin from './pages/admin/AdminLogin'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminPlayers from './pages/admin/AdminPlayers'
 import AdminSchedule from './pages/admin/AdminSchedule'
@@ -32,12 +34,18 @@ export const router = createBrowserRouter([
     path: '/admin',
     element: <AdminLayout />,
     children: [
-      { index: true, element: <AdminHome /> },
-      { path: 'settings', element: <AdminSettings /> },
-      { path: 'players', element: <AdminPlayers /> },
-      { path: 'schedule', element: <AdminSchedule /> },
-      { path: 'scores/:weekId', element: <AdminScores /> },
-      { path: 'scoresheets/:weekId', element: <AdminScoresheets /> },
+      { path: 'login', element: <AdminLogin /> },
+      {
+        element: <AdminGuard />,
+        children: [
+          { index: true, element: <AdminHome /> },
+          { path: 'settings', element: <AdminSettings /> },
+          { path: 'players', element: <AdminPlayers /> },
+          { path: 'schedule', element: <AdminSchedule /> },
+          { path: 'scores/:weekId', element: <AdminScores /> },
+          { path: 'scoresheets/:weekId', element: <AdminScoresheets /> },
+        ],
+      },
     ],
   },
 ])

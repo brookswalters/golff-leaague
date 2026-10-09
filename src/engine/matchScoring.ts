@@ -1,4 +1,4 @@
-import { MatchPlayer, MatchResult, HoleResult } from './types'
+import type { MatchPlayer, MatchResult, HoleResult } from './types'
 import { ROUND_HOLES } from './course'
 import { allocateStrokes, getStrokesOnHoles } from './strokes'
 import { ghostNetScore } from './ghost'

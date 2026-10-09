@@ -1,4 +1,4 @@
-import { SkinEntry, SkinResult, SkinsWeekResult } from './types'
+import type { SkinEntry, SkinResult, SkinsWeekResult } from './types'
 
 /**
  * Calculate skins results for a week.
