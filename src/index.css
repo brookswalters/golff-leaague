@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 0.5in;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .page-break {
+    page-break-after: always;
+  }
+
+  body {
+    font-size: 11px;
+  }
+
+  .score-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .score-sheet td,
+  .score-sheet th {
+    border: 1px solid #000;
+    padding: 2px 4px;
+    text-align: center;
+    min-width: 24px;
+  }
+}

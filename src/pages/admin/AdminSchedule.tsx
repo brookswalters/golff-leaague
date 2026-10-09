@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useLeague } from '../../hooks/useLeague'
 import type { Team, Week, Match, Player } from '../../lib/database.types'
@@ -68,6 +69,7 @@ const labelCls = 'block text-sm font-semibold text-gray-700 mb-1'
 export default function AdminSchedule() {
   const { data: leagueData } = useLeague()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const seasonId = leagueData?.season?.id
   const leagueId = leagueData?.league?.id
   const season = leagueData?.season
@@ -508,6 +510,7 @@ export default function AdminSchedule() {
             <div className="divide-y divide-gray-100">
               {weeks.map(week => {
                 const isActionLoading = weekActionLoading === week.id
+                const weekHasMatches = (matches?.filter(m => m.week_id === week.id) ?? []).length > 0
                 return (
                   <div key={week.id} className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -518,6 +521,14 @@ export default function AdminSchedule() {
                       <StatusBadge status={week.status} />
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-4">
+                      {weekHasMatches && (
+                        <button
+                          onClick={() => navigate(`/admin/scoresheets/${week.id}`)}
+                          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700"
+                        >
+                          Score Sheets
+                        </button>
+                      )}
                       {week.status === 'rainout' ? (
                         <button
                           onClick={() => handleSetWeekStatus(week.id, 'scheduled')}
