@@ -18,11 +18,56 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+// ---- Matchup generator helpers ----
+
+interface GeneratorState {
+  open: boolean
+  method: 'random' | 'handicap'
+  pairings: [Team, Team][]
+  teeTimes: string[]
+  loading: boolean
+}
+
+function addMinutes(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number)
+  const total = h * 60 + m + minutes
+  const newH = Math.floor(total / 60) % 24
+  const newM = total % 60
+  return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`
+}
+
+function randomPairings(teams: Team[]): [Team, Team][] {
+  const shuffled = [...teams].sort(() => Math.random() - 0.5)
+  const pairs: [Team, Team][] = []
+  for (let i = 0; i < shuffled.length - 1; i += 2) {
+    pairs.push([shuffled[i], shuffled[i + 1]])
+  }
+  return pairs
+}
+
+function handicapPairings(teams: Team[], handicaps: Record<string, number>): [Team, Team][] {
+  const sorted = [...teams].sort((a, b) => (handicaps[b.id] ?? 0) - (handicaps[a.id] ?? 0))
+  const pairs: [Team, Team][] = []
+  for (let i = 0; i < sorted.length - 1; i += 2) {
+    pairs.push([sorted[i], sorted[i + 1]])
+  }
+  return pairs
+}
+
+function buildTeeTimes(count: number, firstTeeTime: string, intervalMin: number): string[] {
+  const times: string[] = []
+  for (let i = 0; i < count; i++) {
+    times.push(addMinutes(firstTeeTime, i * intervalMin))
+  }
+  return times
+}
+
 export default function AdminSchedule() {
   const { data: leagueData } = useLeague()
   const queryClient = useQueryClient()
   const seasonId = leagueData?.season?.id
   const leagueId = leagueData?.league?.id
+  const season = leagueData?.season
 
   // --- Teams ---
   const { data: teams, isLoading: teamsLoading } = useQuery({
@@ -181,6 +226,148 @@ export default function AdminSchedule() {
 
   function getTeamName(id: string) {
     return teams?.find(t => t.id === id)?.name ?? id
+  }
+
+  // --- Matchup generator state ---
+  const [generators, setGenerators] = useState<Record<string, GeneratorState>>({})
+  const [savingMatchups, setSavingMatchups] = useState<string | null>(null)
+
+  function getGenerator(weekId: string): GeneratorState {
+    return generators[weekId] ?? {
+      open: false,
+      method: 'random',
+      pairings: [],
+      teeTimes: [],
+      loading: false,
+    }
+  }
+
+  function setGenerator(weekId: string, patch: Partial<GeneratorState>) {
+    setGenerators(prev => ({
+      ...prev,
+      [weekId]: { ...getGenerator(weekId), ...patch },
+    }))
+  }
+
+  async function fetchTeamHandicaps(teamsToScore: Team[]): Promise<Record<string, number>> {
+    if (!seasonId) return {}
+    const handicaps: Record<string, number> = {}
+
+    await Promise.all(
+      teamsToScore.map(async team => {
+        const playerIds = [team.player1_id, team.player2_id].filter(Boolean) as string[]
+        let total = 0
+        await Promise.all(
+          playerIds.map(async pid => {
+            const { data } = await supabase
+              .from('handicap_history')
+              .select('handicap')
+              .eq('player_id', pid)
+              .eq('season_id', seasonId)
+              .order('week_number', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+            total += data?.handicap ?? 0
+          })
+        )
+        handicaps[team.id] = total
+      })
+    )
+
+    return handicaps
+  }
+
+  async function handleOpenGenerator(weekId: string) {
+    // Close if already open
+    const cur = getGenerator(weekId)
+    if (cur.open) {
+      setGenerator(weekId, { open: false })
+      return
+    }
+    setGenerator(weekId, { open: true, loading: true, pairings: [], teeTimes: [] })
+    await runGenerate(weekId, 'random')
+  }
+
+  async function runGenerate(weekId: string, method: 'random' | 'handicap') {
+    const activeTeams = teams ?? []
+    const firstTeeTime = season?.first_tee_time ?? '08:00'
+    const intervalMin = season?.tee_interval_min ?? 10
+
+    let pairs: [Team, Team][]
+
+    if (method === 'handicap') {
+      const handicaps = await fetchTeamHandicaps(activeTeams)
+      pairs = handicapPairings(activeTeams, handicaps)
+    } else {
+      pairs = randomPairings(activeTeams)
+    }
+
+    const teeTimes = buildTeeTimes(pairs.length, firstTeeTime, intervalMin)
+
+    setGenerator(weekId, {
+      open: true,
+      method,
+      pairings: pairs,
+      teeTimes,
+      loading: false,
+    })
+  }
+
+  async function handleRegenerate(weekId: string) {
+    const cur = getGenerator(weekId)
+    setGenerator(weekId, { loading: true })
+    await runGenerate(weekId, cur.method)
+  }
+
+  async function handleChangeMethod(weekId: string, method: 'random' | 'handicap') {
+    setGenerator(weekId, { method, loading: true })
+    await runGenerate(weekId, method)
+  }
+
+  function handleTeeTimeChange(weekId: string, idx: number, value: string) {
+    const cur = getGenerator(weekId)
+    const updated = [...cur.teeTimes]
+    updated[idx] = value
+    setGenerator(weekId, { teeTimes: updated })
+  }
+
+  async function handleSaveMatchups(weekId: string) {
+    if (!seasonId) return
+    const cur = getGenerator(weekId)
+    const weekMatches = matches?.filter(m => m.week_id === weekId) ?? []
+
+    if (weekMatches.length > 0) {
+      const ok = window.confirm('This week already has matches. Replace them?')
+      if (!ok) return
+      // Delete existing matches
+      const { error: delError } = await supabase
+        .from('matches')
+        .delete()
+        .in('id', weekMatches.map(m => m.id))
+      if (delError) {
+        alert('Error deleting existing matches: ' + delError.message)
+        return
+      }
+    }
+
+    setSavingMatchups(weekId)
+
+    const inserts = cur.pairings.map(([teamA, teamB], idx) => ({
+      week_id: weekId,
+      team_a_id: teamA.id,
+      team_b_id: teamB.id,
+      tee_time: cur.teeTimes[idx] ? `${cur.teeTimes[idx]}:00` : null,
+    }))
+
+    const { error } = await supabase.from('matches').insert(inserts)
+    setSavingMatchups(null)
+
+    if (error) {
+      alert('Error saving matchups: ' + error.message)
+    } else {
+      setGenerator(weekId, { open: false })
+      queryClient.invalidateQueries({ queryKey: ['matches', seasonId] })
+    }
   }
 
   if (!seasonId) {
@@ -364,6 +551,9 @@ export default function AdminSchedule() {
             <div className="space-y-4">
               {weeks.map(week => {
                 const weekMatches = matches?.filter(m => m.week_id === week.id) ?? []
+                const gen = getGenerator(week.id)
+                const isSaving = savingMatchups === week.id
+
                 return (
                   <div key={week.id} className="bg-white rounded-lg shadow p-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -373,13 +563,108 @@ export default function AdminSchedule() {
                         </p>
                         <StatusBadge status={week.status} />
                       </div>
-                      <button
-                        onClick={() => openAddMatch(week.id)}
-                        className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800"
-                      >
-                        Add Match
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenGenerator(week.id)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                        >
+                          {gen.open ? 'Close Generator' : 'Generate Matchups'}
+                        </button>
+                        <button
+                          onClick={() => openAddMatch(week.id)}
+                          className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800"
+                        >
+                          Add Match
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Matchup generator panel */}
+                    {gen.open && (
+                      <div className="border border-blue-200 rounded-lg p-4 space-y-4 bg-blue-50">
+                        <h4 className="text-sm font-semibold text-gray-800">Generate Matchups</h4>
+
+                        {/* Method radio */}
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer text-sm">
+                            <input
+                              type="radio"
+                              name={`method-${week.id}`}
+                              value="random"
+                              checked={gen.method === 'random'}
+                              onChange={() => handleChangeMethod(week.id, 'random')}
+                              className="accent-blue-600"
+                            />
+                            <span>Random</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer text-sm">
+                            <input
+                              type="radio"
+                              name={`method-${week.id}`}
+                              value="handicap"
+                              checked={gen.method === 'handicap'}
+                              onChange={() => handleChangeMethod(week.id, 'handicap')}
+                              className="accent-blue-600"
+                            />
+                            <span>By Handicap</span>
+                          </label>
+                        </div>
+
+                        {/* Loading state */}
+                        {gen.loading ? (
+                          <p className="text-sm text-gray-500">Loading...</p>
+                        ) : gen.pairings.length === 0 ? (
+                          <p className="text-sm text-gray-500">No teams available to pair.</p>
+                        ) : (
+                          <>
+                            {/* Pairings preview */}
+                            <div className="space-y-2">
+                              {gen.pairings.map(([teamA, teamB], idx) => (
+                                <div key={idx} className="flex items-center gap-3 flex-wrap">
+                                  <span className="text-sm font-medium text-gray-900 min-w-[120px]">
+                                    {teamA.name}
+                                  </span>
+                                  <span className="text-xs text-gray-400 font-semibold">vs</span>
+                                  <span className="text-sm font-medium text-gray-900 min-w-[120px]">
+                                    {teamB.name}
+                                  </span>
+                                  <input
+                                    type="time"
+                                    value={gen.teeTimes[idx] ?? ''}
+                                    onChange={e => handleTeeTimeChange(week.id, idx, e.target.value)}
+                                    className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                onClick={() => handleRegenerate(week.id)}
+                                disabled={gen.loading}
+                                className="border border-blue-400 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-100 disabled:opacity-60"
+                              >
+                                Regenerate
+                              </button>
+                              <button
+                                onClick={() => handleSaveMatchups(week.id)}
+                                disabled={isSaving || gen.loading}
+                                className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800 disabled:opacity-60"
+                              >
+                                {isSaving ? 'Saving...' : 'Save Matchups'}
+                              </button>
+                              <button
+                                onClick={() => setGenerator(week.id, { open: false })}
+                                className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-100"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     {/* Add match form for this week */}
                     {addMatchWeekId === week.id && (
