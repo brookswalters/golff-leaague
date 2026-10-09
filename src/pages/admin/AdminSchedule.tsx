@@ -145,11 +145,30 @@ export default function AdminSchedule() {
   const [addingTeam, setAddingTeam] = useState(false)
   const [teamError, setTeamError] = useState<string | null>(null)
 
+  // Players already assigned to a team this season
+  const assignedPlayerIds = new Set(
+    teams?.flatMap(t => [t.player1_id, t.player2_id].filter(Boolean)) ?? []
+  )
+
   async function handleAddTeam(e: React.FormEvent) {
     e.preventDefault()
     if (!seasonId) return
-    setAddingTeam(true)
     setTeamError(null)
+
+    // Validate no player is already on another team
+    const picks = [teamP1, teamP2].filter(Boolean)
+    const duplicate = picks.find(id => assignedPlayerIds.has(id))
+    if (duplicate) {
+      const name = players?.find(p => p.id === duplicate)?.name ?? 'That player'
+      setTeamError(`${name} is already on another team this season.`)
+      return
+    }
+    if (teamP1 && teamP2 && teamP1 === teamP2) {
+      setTeamError('Player 1 and Player 2 must be different.')
+      return
+    }
+
+    setAddingTeam(true)
     const { error } = await supabase.from('teams').insert({
       season_id: seasonId,
       name: teamName,
@@ -421,7 +440,7 @@ export default function AdminSchedule() {
                     className={inputCls}
                   >
                     <option value="">— none —</option>
-                    {players?.map(p => (
+                    {players?.filter(p => !assignedPlayerIds.has(p.id) || p.id === teamP1).map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
@@ -434,7 +453,7 @@ export default function AdminSchedule() {
                     className={inputCls}
                   >
                     <option value="">— none —</option>
-                    {players?.map(p => (
+                    {players?.filter(p => (!assignedPlayerIds.has(p.id) || p.id === teamP2) && p.id !== teamP1).map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
