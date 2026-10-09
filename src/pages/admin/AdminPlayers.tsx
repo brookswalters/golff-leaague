@@ -4,6 +4,9 @@ import { supabase } from '../../lib/supabase'
 import { useLeague } from '../../hooks/useLeague'
 import type { Player } from '../../lib/database.types'
 
+const inputCls = 'w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-green-600'
+const labelCls = 'block text-sm font-semibold text-gray-700 mb-1'
+
 export default function AdminPlayers() {
   const { data: leagueData } = useLeague()
   const queryClient = useQueryClient()
@@ -98,8 +101,8 @@ export default function AdminPlayers() {
   if (!leagueId) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900">Players</h1>
-        <p className="text-gray-500">Set up a league in Settings first.</p>
+        <h1 className="text-3xl font-bold text-gray-800">Players</h1>
+        <p className="text-base text-gray-500">Set up a league in Settings first.</p>
       </div>
     )
   }
@@ -107,54 +110,54 @@ export default function AdminPlayers() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Players</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Players</h1>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 text-sm font-medium"
+          className="bg-green-700 text-white px-5 py-3 rounded-lg font-semibold hover:bg-green-800"
         >
           {showAddForm ? 'Cancel' : 'Add Player'}
         </button>
       </div>
 
       {showAddForm && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6 mt-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">New Player</h2>
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+              <label className={labelCls}>Name *</label>
               <input
                 type="text"
                 required
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className={labelCls}>Email</label>
               <input
                 type="email"
                 value={newEmail}
                 onChange={e => setNewEmail(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={newSenior}
                 onChange={e => setNewSenior(e.target.checked)}
-                className="w-4 h-4 accent-green-700"
+                className="w-5 h-5 accent-green-700"
               />
-              <span className="text-sm font-medium text-gray-700">Senior (65+)</span>
+              <span className="text-base font-medium text-gray-700">Senior (65+)</span>
             </label>
             {addError && (
-              <p className="text-sm text-red-600">{addError}</p>
+              <p className="text-base text-red-600">{addError}</p>
             )}
             <button
               type="submit"
               disabled={adding}
-              className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 font-medium disabled:opacity-60"
+              className="bg-green-700 text-white px-5 py-3 rounded-lg font-semibold hover:bg-green-800 disabled:opacity-60"
             >
               {adding ? 'Saving...' : 'Add Player'}
             </button>
@@ -163,58 +166,58 @@ export default function AdminPlayers() {
       )}
 
       {isLoading ? (
-        <p className="text-gray-500">Loading players...</p>
+        <p className="text-base text-gray-500">Loading players...</p>
       ) : (
-        <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
           {players && players.length === 0 && (
-            <p className="p-4 text-gray-500 text-sm">No players yet.</p>
+            <p className="py-4 px-4 text-base text-gray-500">No players yet. Add your first player above.</p>
           )}
           {players?.map(player => (
-            <div key={player.id} className="p-4">
+            <div key={player.id} className="py-4 px-4">
               {editingId === player.id ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                      <label className={labelCls}>Name *</label>
                       <input
                         type="text"
                         required
                         value={editName}
                         onChange={e => setEditName(e.target.value)}
-                        className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                        className={inputCls}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <label className={labelCls}>Email</label>
                       <input
                         type="email"
                         value={editEmail}
                         onChange={e => setEditEmail(e.target.value)}
-                        className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                        className={inputCls}
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={editSenior}
                       onChange={e => setEditSenior(e.target.checked)}
-                      className="w-4 h-4 accent-green-700"
+                      className="w-5 h-5 accent-green-700"
                     />
-                    <span className="text-sm font-medium text-gray-700">Senior (65+)</span>
+                    <span className="text-base font-medium text-gray-700">Senior (65+)</span>
                   </label>
-                  {editError && <p className="text-sm text-red-600">{editError}</p>}
+                  {editError && <p className="text-base text-red-600">{editError}</p>}
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleEditSave(player.id)}
                       disabled={editSaving}
-                      className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800 disabled:opacity-60"
+                      className="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-800 disabled:opacity-60"
                     >
                       {editSaving ? 'Saving...' : 'Save'}
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50"
+                      className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200"
                     >
                       Cancel
                     </button>
@@ -223,34 +226,34 @@ export default function AdminPlayers() {
               ) : (
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-900">
+                    <p className="text-base font-semibold text-gray-800 flex items-center gap-2 flex-wrap">
                       {player.name}
                       {player.is_senior && (
-                        <span className="ml-2 text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">
+                        <span className="inline-block bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-medium">
                           Senior
                         </span>
                       )}
                       {!player.active && (
-                        <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                        <span className="inline-block bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full font-medium">
                           Inactive
                         </span>
                       )}
                     </p>
                     {player.email && (
-                      <p className="text-sm text-gray-500">{player.email}</p>
+                      <p className="text-sm text-gray-500 mt-0.5">{player.email}</p>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0 ml-4">
                     <button
                       onClick={() => startEdit(player)}
-                      className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50"
+                      className="text-sm bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200"
                     >
                       Edit
                     </button>
                     {player.active && (
                       <button
                         onClick={() => handleDeactivate(player.id)}
-                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                        className="text-sm bg-red-50 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100"
                       >
                         Deactivate
                       </button>

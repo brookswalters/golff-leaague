@@ -21,6 +21,9 @@ function getLeagueDays(startDate: string, endDate: string, dayOfWeek: number): s
   return dates
 }
 
+const inputCls = 'w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-green-600'
+const labelCls = 'block text-sm font-semibold text-gray-700 mb-1'
+
 export default function AdminSettings() {
   const { data, isLoading } = useLeague()
   const queryClient = useQueryClient()
@@ -162,94 +165,82 @@ export default function AdminSettings() {
     }
   }
 
-  if (isLoading) return <div className="p-4 text-gray-500">Loading...</div>
+  if (isLoading) return <div className="p-4 text-base text-gray-500">Loading...</div>
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-
-      {toast && (
-        <div
-          className={`rounded p-3 text-sm ${
-            toast.type === 'success'
-              ? 'bg-green-50 border border-green-200 text-green-800'
-              : 'bg-red-50 border border-red-200 text-red-700'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
+      <h1 className="text-3xl font-bold text-gray-800">Settings</h1>
 
       {weeksNote && (
-        <div className="rounded p-3 text-sm bg-blue-50 border border-blue-200 text-blue-800">
+        <div className="rounded-lg p-4 text-base bg-blue-50 border border-blue-200 text-blue-800">
           {weeksNote}
         </div>
       )}
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* League section */}
-        <div className="bg-white rounded-lg shadow p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">League</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">League</h2>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">League Name</label>
+            <label className={labelCls}>League Name</label>
             <input
               type="text"
               required
               value={leagueName}
               onChange={e => setLeagueName(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+              className={inputCls}
             />
           </div>
         </div>
 
         {/* Season section */}
-        <div className="bg-white rounded-lg shadow p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Season</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Season</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Season Year</label>
+              <label className={labelCls}>Season Year</label>
               <input
                 type="number"
                 required
                 value={year}
                 onChange={e => setYear(Number(e.target.value))}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">First Tee Time</label>
+              <label className={labelCls}>First Tee Time</label>
               <input
                 type="time"
                 value={firstTeeTime}
                 onChange={e => setFirstTeeTime(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <label className={labelCls}>Start Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <label className={labelCls}>End Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">League Day</label>
+              <label className={labelCls}>League Day</label>
               <select
                 value={leagueDay}
                 onChange={e => setLeagueDay(Number(e.target.value))}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               >
                 <option value={1}>Monday</option>
                 <option value={2}>Tuesday</option>
@@ -261,72 +252,72 @@ export default function AdminSettings() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tee Interval (minutes)</label>
+              <label className={labelCls}>Tee Interval (minutes)</label>
               <input
                 type="number"
                 min={1}
                 value={teeIntervalMin}
                 onChange={e => setTeeIntervalMin(Number(e.target.value))}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Handicap Rounds</label>
+              <label className={labelCls}>Handicap Rounds</label>
               <input
                 type="number"
                 min={1}
                 value={handicapRounds}
                 onChange={e => setHandicapRounds(Number(e.target.value))}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Handicap Allowance (%)</label>
+              <label className={labelCls}>Handicap Allowance (%)</label>
               <input
                 type="number"
                 min={1}
                 max={100}
                 value={handicapAllowance}
                 onChange={e => setHandicapAllowance(Number(e.target.value))}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Skins Buy-in ($)</label>
+              <label className={labelCls}>Skins Buy-in ($)</label>
               <input
                 type="number"
                 min={0}
                 step={0.5}
                 value={skinsBuyin}
                 onChange={e => setSkinsBuyin(Number(e.target.value))}
-                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                className={inputCls}
               />
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 pt-1">
-            <label className="flex items-center gap-2 cursor-pointer">
+          <div className="flex flex-col gap-3 pt-4">
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={skinsGross}
                 onChange={e => setSkinsGross(e.target.checked)}
-                className="w-4 h-4 accent-green-700"
+                className="w-5 h-5 accent-green-700"
               />
-              <span className="text-sm font-medium text-gray-700">Skins Gross</span>
+              <span className="text-base font-medium text-gray-700">Skins Gross</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={skinsCarryover}
                 onChange={e => setSkinsCarryover(e.target.checked)}
-                className="w-4 h-4 accent-green-700"
+                className="w-5 h-5 accent-green-700"
               />
-              <span className="text-sm font-medium text-gray-700">Skins Carryover</span>
+              <span className="text-base font-medium text-gray-700">Skins Carryover</span>
             </label>
           </div>
 
           {(startDate && endDate) && (
-            <p className="text-xs text-gray-500">
+            <p className="text-sm text-gray-500 mt-4">
               Weeks will be auto-generated on save if none exist yet for this season.
             </p>
           )}
@@ -335,11 +326,24 @@ export default function AdminSettings() {
         <button
           type="submit"
           disabled={saving}
-          className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 font-medium disabled:opacity-60"
+          className="bg-green-700 text-white px-8 py-3 rounded-lg text-base font-semibold hover:bg-green-800 disabled:opacity-60"
         >
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </form>
+
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-sm font-medium shadow-lg z-50 ${
+            toast.type === 'success'
+              ? 'bg-gray-900 text-white'
+              : 'bg-red-600 text-white'
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
     </div>
   )
 }

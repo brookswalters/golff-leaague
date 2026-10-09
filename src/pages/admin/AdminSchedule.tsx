@@ -62,6 +62,9 @@ function buildTeeTimes(count: number, firstTeeTime: string, intervalMin: number)
   return times
 }
 
+const inputCls = 'w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-green-600'
+const labelCls = 'block text-sm font-semibold text-gray-700 mb-1'
+
 export default function AdminSchedule() {
   const { data: leagueData } = useLeague()
   const queryClient = useQueryClient()
@@ -278,7 +281,6 @@ export default function AdminSchedule() {
   }
 
   async function handleOpenGenerator(weekId: string) {
-    // Close if already open
     const cur = getGenerator(weekId)
     if (cur.open) {
       setGenerator(weekId, { open: false })
@@ -339,7 +341,6 @@ export default function AdminSchedule() {
     if (weekMatches.length > 0) {
       const ok = window.confirm('This week already has matches. Replace them?')
       if (!ok) return
-      // Delete existing matches
       const { error: delError } = await supabase
         .from('matches')
         .delete()
@@ -373,49 +374,49 @@ export default function AdminSchedule() {
   if (!seasonId) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
-        <p className="text-gray-500">Set up a season in Settings first.</p>
+        <h1 className="text-3xl font-bold text-gray-800">Schedule</h1>
+        <p className="text-base text-gray-500">Set up a season in Settings first.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-800">Schedule</h1>
 
       {/* Teams section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Teams</h2>
           <button
             onClick={() => setShowAddTeam(!showAddTeam)}
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 text-sm font-medium"
+            className="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-800"
           >
             {showAddTeam ? 'Cancel' : 'Add Team'}
           </button>
         </div>
 
         {showAddTeam && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-4">
             <h3 className="text-base font-semibold text-gray-800 mb-4">New Team</h3>
             <form onSubmit={handleAddTeam} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Team Name *</label>
+                <label className={labelCls}>Team Name *</label>
                 <input
                   type="text"
                   required
                   value={teamName}
                   onChange={e => setTeamName(e.target.value)}
-                  className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                  className={inputCls}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Player 1</label>
+                  <label className={labelCls}>Player 1</label>
                   <select
                     value={teamP1}
                     onChange={e => setTeamP1(e.target.value)}
-                    className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                    className={inputCls}
                   >
                     <option value="">— none —</option>
                     {players?.map(p => (
@@ -424,11 +425,11 @@ export default function AdminSchedule() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Player 2</label>
+                  <label className={labelCls}>Player 2</label>
                   <select
                     value={teamP2}
                     onChange={e => setTeamP2(e.target.value)}
-                    className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                    className={inputCls}
                   >
                     <option value="">— none —</option>
                     {players?.map(p => (
@@ -437,20 +438,20 @@ export default function AdminSchedule() {
                   </select>
                 </div>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={teamGhost}
                   onChange={e => setTeamGhost(e.target.checked)}
-                  className="w-4 h-4 accent-green-700"
+                  className="w-5 h-5 accent-green-700"
                 />
-                <span className="text-sm font-medium text-gray-700">Ghost Team</span>
+                <span className="text-base font-medium text-gray-700">Ghost Team</span>
               </label>
-              {teamError && <p className="text-sm text-red-600">{teamError}</p>}
+              {teamError && <p className="text-base text-red-600">{teamError}</p>}
               <button
                 type="submit"
                 disabled={addingTeam}
-                className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 font-medium disabled:opacity-60"
+                className="bg-green-700 text-white px-5 py-3 rounded-lg font-semibold hover:bg-green-800 disabled:opacity-60"
               >
                 {addingTeam ? 'Saving...' : 'Add Team'}
               </button>
@@ -459,24 +460,24 @@ export default function AdminSchedule() {
         )}
 
         {teamsLoading ? (
-          <p className="text-gray-500 text-sm">Loading teams...</p>
+          <p className="text-base text-gray-500">Loading teams...</p>
         ) : (
-          <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100">
             {(!teams || teams.length === 0) && (
-              <p className="p-4 text-gray-500 text-sm">No teams yet.</p>
+              <p className="py-4 text-base text-gray-500">No teams yet.</p>
             )}
             {teams?.map(team => {
               const p1 = players?.find(p => p.id === team.player1_id)
               const p2 = players?.find(p => p.id === team.player2_id)
               return (
-                <div key={team.id} className="p-4">
-                  <p className="font-medium text-gray-900">
+                <div key={team.id} className="py-3">
+                  <p className="text-base font-semibold text-gray-800">
                     {team.name}
                     {team.is_ghost && (
-                      <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Ghost</span>
+                      <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">Ghost</span>
                     )}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 mt-0.5">
                     {[p1?.name, p2?.name].filter(Boolean).join(' / ') || 'No players assigned'}
                   </p>
                 </div>
@@ -487,8 +488,8 @@ export default function AdminSchedule() {
       </div>
 
       {/* Weeks section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Weeks</h2>
           {weeks && weeks.length > 0 && (
             <span className="text-sm text-gray-500">{weeks.length} week{weeks.length === 1 ? '' : 's'}</span>
@@ -496,48 +497,48 @@ export default function AdminSchedule() {
         </div>
 
         {weeksLoading ? (
-          <p className="text-gray-500 text-sm">Loading weeks...</p>
+          <p className="text-base text-gray-500">Loading weeks...</p>
         ) : !weeks || weeks.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500 text-sm">
-            No weeks yet. Set start and end dates in Settings to auto-generate weeks.
-          </div>
+          <p className="text-base text-gray-500">
+            No weeks scheduled yet. Set your season start and end dates in Settings to generate the schedule.
+          </p>
         ) : (
           <div className="space-y-4">
             {/* Week list overview */}
-            <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100">
               {weeks.map(week => {
-                const isLoading = weekActionLoading === week.id
+                const isActionLoading = weekActionLoading === week.id
                 return (
-                  <div key={week.id} className="flex items-center justify-between py-2 px-4 border-b border-gray-100 last:border-b-0">
+                  <div key={week.id} className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-sm font-medium text-gray-900 w-16 shrink-0">
+                      <span className="text-base font-bold text-gray-800 w-20 shrink-0">
                         Week {week.number}
                       </span>
-                      <span className="text-sm text-gray-600">{week.date}</span>
+                      <span className="text-sm text-gray-500">{week.date}</span>
                       <StatusBadge status={week.status} />
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-4">
                       {week.status === 'rainout' ? (
                         <button
                           onClick={() => handleSetWeekStatus(week.id, 'scheduled')}
-                          disabled={isLoading}
-                          className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                          disabled={isActionLoading}
+                          className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
                         >
                           Restore
                         </button>
                       ) : week.status !== 'complete' ? (
                         <button
                           onClick={() => handleSetWeekStatus(week.id, 'rainout')}
-                          disabled={isLoading}
-                          className="text-xs px-2 py-1 rounded border border-orange-300 text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+                          disabled={isActionLoading}
+                          className="px-4 py-2 rounded-lg text-sm font-medium border border-orange-300 text-orange-700 hover:bg-orange-50 disabled:opacity-50"
                         >
                           Rainout
                         </button>
                       ) : null}
                       <button
                         onClick={() => handleDeleteWeek(week)}
-                        disabled={isLoading}
-                        className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        disabled={isActionLoading}
+                        className="px-4 py-2 rounded-lg text-sm font-medium border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -548,31 +549,32 @@ export default function AdminSchedule() {
             </div>
 
             {/* Per-week match management */}
-            <div className="space-y-4">
+            <div className="space-y-4 pt-2">
               {weeks.map(week => {
                 const weekMatches = matches?.filter(m => m.week_id === week.id) ?? []
                 const gen = getGenerator(week.id)
                 const isSaving = savingMatchups === week.id
 
                 return (
-                  <div key={week.id} className="bg-white rounded-lg shadow p-4 space-y-3">
+                  <div key={week.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-gray-900">
-                          Week {week.number} — {week.date}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-base font-bold text-gray-800">
+                          Week {week.number}
                         </p>
+                        <span className="text-sm text-gray-500">{week.date}</span>
                         <StatusBadge status={week.status} />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0 ml-4">
                         <button
                           onClick={() => handleOpenGenerator(week.id)}
-                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
                         >
                           {gen.open ? 'Close Generator' : 'Generate Matchups'}
                         </button>
                         <button
                           onClick={() => openAddMatch(week.id)}
-                          className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800"
+                          className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200"
                         >
                           Add Match
                         </button>
@@ -581,12 +583,11 @@ export default function AdminSchedule() {
 
                     {/* Matchup generator panel */}
                     {gen.open && (
-                      <div className="border border-blue-200 rounded-lg p-4 space-y-4 bg-blue-50">
-                        <h4 className="text-sm font-semibold text-gray-800">Generate Matchups</h4>
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 space-y-4">
+                        <h4 className="text-base font-semibold text-gray-800">Generate Matchups</h4>
 
-                        {/* Method radio */}
                         <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer text-sm">
+                          <label className="flex items-center gap-2 cursor-pointer text-base">
                             <input
                               type="radio"
                               name={`method-${week.id}`}
@@ -597,7 +598,7 @@ export default function AdminSchedule() {
                             />
                             <span>Random</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer text-sm">
+                          <label className="flex items-center gap-2 cursor-pointer text-base">
                             <input
                               type="radio"
                               name={`method-${week.id}`}
@@ -610,53 +611,50 @@ export default function AdminSchedule() {
                           </label>
                         </div>
 
-                        {/* Loading state */}
                         {gen.loading ? (
-                          <p className="text-sm text-gray-500">Loading...</p>
+                          <p className="text-base text-gray-500">Loading...</p>
                         ) : gen.pairings.length === 0 ? (
-                          <p className="text-sm text-gray-500">No teams available to pair.</p>
+                          <p className="text-base text-gray-500">No teams available to pair.</p>
                         ) : (
                           <>
-                            {/* Pairings preview */}
                             <div className="space-y-2">
                               {gen.pairings.map(([teamA, teamB], idx) => (
                                 <div key={idx} className="flex items-center gap-3 flex-wrap">
-                                  <span className="text-sm font-medium text-gray-900 min-w-[120px]">
+                                  <span className="text-base font-medium text-gray-900 min-w-[120px]">
                                     {teamA.name}
                                   </span>
-                                  <span className="text-xs text-gray-400 font-semibold">vs</span>
-                                  <span className="text-sm font-medium text-gray-900 min-w-[120px]">
+                                  <span className="text-sm text-gray-400 font-semibold">vs</span>
+                                  <span className="text-base font-medium text-gray-900 min-w-[120px]">
                                     {teamB.name}
                                   </span>
                                   <input
                                     type="time"
                                     value={gen.teeTimes[idx] ?? ''}
                                     onChange={e => handleTeeTimeChange(week.id, idx, e.target.value)}
-                                    className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                                   />
                                 </div>
                               ))}
                             </div>
 
-                            {/* Action buttons */}
                             <div className="flex items-center gap-2 flex-wrap">
                               <button
                                 onClick={() => handleRegenerate(week.id)}
                                 disabled={gen.loading}
-                                className="border border-blue-400 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-100 disabled:opacity-60"
+                                className="border border-blue-400 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-60"
                               >
                                 Regenerate
                               </button>
                               <button
                                 onClick={() => handleSaveMatchups(week.id)}
                                 disabled={isSaving || gen.loading}
-                                className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800 disabled:opacity-60"
+                                className="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-60"
                               >
                                 {isSaving ? 'Saving...' : 'Save Matchups'}
                               </button>
                               <button
                                 onClick={() => setGenerator(week.id, { open: false })}
-                                className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-100"
+                                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200"
                               >
                                 Cancel
                               </button>
@@ -668,16 +666,16 @@ export default function AdminSchedule() {
 
                     {/* Add match form for this week */}
                     {addMatchWeekId === week.id && (
-                      <form onSubmit={handleAddMatch} className="border border-gray-200 rounded p-4 space-y-3 bg-gray-50">
-                        <h4 className="text-sm font-semibold text-gray-700">New Match</h4>
+                      <form onSubmit={handleAddMatch} className="border border-gray-200 rounded-xl p-4 space-y-3 bg-white">
+                        <h4 className="text-base font-semibold text-gray-700">New Match</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Team A *</label>
+                            <label className={labelCls}>Team A *</label>
                             <select
                               required
                               value={matchTeamA}
                               onChange={e => setMatchTeamA(e.target.value)}
-                              className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                              className={inputCls}
                             >
                               <option value="">— select —</option>
                               {teams?.map(t => (
@@ -686,12 +684,12 @@ export default function AdminSchedule() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Team B *</label>
+                            <label className={labelCls}>Team B *</label>
                             <select
                               required
                               value={matchTeamB}
                               onChange={e => setMatchTeamB(e.target.value)}
-                              className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                              className={inputCls}
                             >
                               <option value="">— select —</option>
                               {teams?.map(t => (
@@ -700,28 +698,28 @@ export default function AdminSchedule() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Tee Time</label>
+                            <label className={labelCls}>Tee Time</label>
                             <input
                               type="time"
                               value={matchTeeTime}
                               onChange={e => setMatchTeeTime(e.target.value)}
-                              className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                              className={inputCls}
                             />
                           </div>
                         </div>
-                        {matchError && <p className="text-sm text-red-600">{matchError}</p>}
+                        {matchError && <p className="text-base text-red-600">{matchError}</p>}
                         <div className="flex gap-2">
                           <button
                             type="submit"
                             disabled={addingMatch}
-                            className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800 disabled:opacity-60"
+                            className="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-60"
                           >
                             {addingMatch ? 'Saving...' : 'Save Match'}
                           </button>
                           <button
                             type="button"
                             onClick={() => setAddMatchWeekId(null)}
-                            className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-100"
+                            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200"
                           >
                             Cancel
                           </button>
@@ -730,12 +728,14 @@ export default function AdminSchedule() {
                     )}
 
                     {weekMatches.length > 0 && (
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-gray-100 pl-2">
                         {weekMatches.map(match => (
-                          <div key={match.id} className="py-2 text-sm text-gray-700">
-                            {getTeamName(match.team_a_id)} vs {getTeamName(match.team_b_id)}
+                          <div key={match.id} className="py-2 text-base text-gray-700">
+                            <span className="font-medium">{getTeamName(match.team_a_id)}</span>
+                            <span className="text-gray-400 mx-2">vs</span>
+                            <span className="font-medium">{getTeamName(match.team_b_id)}</span>
                             {match.tee_time && (
-                              <span className="ml-2 text-gray-400">@ {match.tee_time}</span>
+                              <span className="ml-2 text-sm text-gray-400">@ {match.tee_time}</span>
                             )}
                           </div>
                         ))}
