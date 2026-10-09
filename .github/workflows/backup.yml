@@ -1,0 +1,26 @@
+name: Weekly Database Backup
+on:
+  schedule:
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Export tables
+        run: |
+          TABLES="leagues seasons courses tees holes players teams weeks matches scores"
+          mkdir -p backup
+          for table in $TABLES; do
+            curl -s \
+              -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+              "${{ secrets.SUPABASE_URL }}/rest/v1/${table}?select=*" \
+              -o "backup/${table}.json"
+          done
+      - name: Commit backup
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "backup: $(date -u +%Y-%m-%d)"
+          repository: .
