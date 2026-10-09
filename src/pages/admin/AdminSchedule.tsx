@@ -4,6 +4,20 @@ import { supabase } from '../../lib/supabase'
 import { useLeague } from '../../hooks/useLeague'
 import type { Team, Week, Match, Player } from '../../lib/database.types'
 
+function StatusBadge({ status }: { status: string }) {
+  const cls =
+    status === 'complete'
+      ? 'bg-green-100 text-green-700'
+      : status === 'rainout'
+      ? 'bg-red-100 text-red-600'
+      : 'bg-gray-100 text-gray-600'
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
+      {status}
+    </span>
+  )
+}
+
 export default function AdminSchedule() {
   const { data: leagueData } = useLeague()
   const queryClient = useQueryClient()
@@ -106,31 +120,26 @@ export default function AdminSchedule() {
     }
   }
 
-  // --- Add Week form ---
-  const [showAddWeek, setShowAddWeek] = useState(false)
-  const [weekNumber, setWeekNumber] = useState(1)
-  const [weekDate, setWeekDate] = useState('')
-  const [addingWeek, setAddingWeek] = useState(false)
-  const [weekError, setWeekError] = useState<string | null>(null)
+  // --- Week actions ---
+  const [weekActionLoading, setWeekActionLoading] = useState<string | null>(null)
 
-  async function handleAddWeek(e: React.FormEvent) {
-    e.preventDefault()
-    if (!seasonId) return
-    setAddingWeek(true)
-    setWeekError(null)
-    const { error } = await supabase.from('weeks').insert({
-      season_id: seasonId,
-      number: weekNumber,
-      date: weekDate,
-    })
-    setAddingWeek(false)
-    if (error) {
-      setWeekError(error.message)
-    } else {
-      setWeekNumber((weeks?.length ?? 0) + 2)
-      setWeekDate('')
-      setShowAddWeek(false)
+  async function handleSetWeekStatus(weekId: string, status: string) {
+    setWeekActionLoading(weekId)
+    const { error } = await supabase.from('weeks').update({ status }).eq('id', weekId)
+    setWeekActionLoading(null)
+    if (!error) {
       queryClient.invalidateQueries({ queryKey: ['weeks', seasonId] })
+    }
+  }
+
+  async function handleDeleteWeek(week: Week) {
+    if (!window.confirm(`Delete Week ${week.number} (${week.date})? This cannot be undone.`)) return
+    setWeekActionLoading(week.id)
+    const { error } = await supabase.from('weeks').delete().eq('id', week.id)
+    setWeekActionLoading(null)
+    if (!error) {
+      queryClient.invalidateQueries({ queryKey: ['weeks', seasonId] })
+      queryClient.invalidateQueries({ queryKey: ['matches', seasonId] })
     }
   }
 
@@ -170,7 +179,7 @@ export default function AdminSchedule() {
     }
   }
 
-  function teamName_by_id(id: string) {
+  function getTeamName(id: string) {
     return teams?.find(t => t.id === id)?.name ?? id
   }
 
@@ -294,165 +303,163 @@ export default function AdminSchedule() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-800">Weeks</h2>
-          <button
-            onClick={() => setShowAddWeek(!showAddWeek)}
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 text-sm font-medium"
-          >
-            {showAddWeek ? 'Cancel' : 'Add Week'}
-          </button>
+          {weeks && weeks.length > 0 && (
+            <span className="text-sm text-gray-500">{weeks.length} week{weeks.length === 1 ? '' : 's'}</span>
+          )}
         </div>
-
-        {showAddWeek && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-base font-semibold text-gray-800 mb-4">New Week</h3>
-            <form onSubmit={handleAddWeek} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Week Number *</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={weekNumber}
-                    onChange={e => setWeekNumber(Number(e.target.value))}
-                    className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={weekDate}
-                    onChange={e => setWeekDate(e.target.value)}
-                    className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
-                  />
-                </div>
-              </div>
-              {weekError && <p className="text-sm text-red-600">{weekError}</p>}
-              <button
-                type="submit"
-                disabled={addingWeek}
-                className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 font-medium disabled:opacity-60"
-              >
-                {addingWeek ? 'Saving...' : 'Add Week'}
-              </button>
-            </form>
-          </div>
-        )}
 
         {weeksLoading ? (
           <p className="text-gray-500 text-sm">Loading weeks...</p>
+        ) : !weeks || weeks.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500 text-sm">
+            No weeks yet. Set start and end dates in Settings to auto-generate weeks.
+          </div>
         ) : (
           <div className="space-y-4">
-            {(!weeks || weeks.length === 0) && (
-              <p className="text-gray-500 text-sm">No weeks yet.</p>
-            )}
-            {weeks?.map(week => {
-              const weekMatches = matches?.filter(m => m.week_id === week.id) ?? []
-              return (
-                <div key={week.id} className="bg-white rounded-lg shadow p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        Week {week.number} — {week.date}
-                      </p>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        week.status === 'complete'
-                          ? 'bg-green-100 text-green-700'
-                          : week.status === 'rainout'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {week.status}
+            {/* Week list overview */}
+            <div className="bg-white rounded-lg shadow divide-y divide-gray-100">
+              {weeks.map(week => {
+                const isLoading = weekActionLoading === week.id
+                return (
+                  <div key={week.id} className="flex items-center justify-between py-2 px-4 border-b border-gray-100 last:border-b-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-sm font-medium text-gray-900 w-16 shrink-0">
+                        Week {week.number}
                       </span>
+                      <span className="text-sm text-gray-600">{week.date}</span>
+                      <StatusBadge status={week.status} />
                     </div>
-                    <button
-                      onClick={() => openAddMatch(week.id)}
-                      className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800"
-                    >
-                      Add Match
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      {week.status === 'rainout' ? (
+                        <button
+                          onClick={() => handleSetWeekStatus(week.id, 'scheduled')}
+                          disabled={isLoading}
+                          className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Restore
+                        </button>
+                      ) : week.status !== 'complete' ? (
+                        <button
+                          onClick={() => handleSetWeekStatus(week.id, 'rainout')}
+                          disabled={isLoading}
+                          className="text-xs px-2 py-1 rounded border border-orange-300 text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+                        >
+                          Rainout
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={() => handleDeleteWeek(week)}
+                        disabled={isLoading}
+                        className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
+                )
+              })}
+            </div>
 
-                  {/* Add match form for this week */}
-                  {addMatchWeekId === week.id && (
-                    <form onSubmit={handleAddMatch} className="border border-gray-200 rounded p-4 space-y-3 bg-gray-50">
-                      <h4 className="text-sm font-semibold text-gray-700">New Match</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Team A *</label>
-                          <select
-                            required
-                            value={matchTeamA}
-                            onChange={e => setMatchTeamA(e.target.value)}
-                            className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
-                          >
-                            <option value="">— select —</option>
-                            {teams?.map(t => (
-                              <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Team B *</label>
-                          <select
-                            required
-                            value={matchTeamB}
-                            onChange={e => setMatchTeamB(e.target.value)}
-                            className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
-                          >
-                            <option value="">— select —</option>
-                            {teams?.map(t => (
-                              <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Tee Time</label>
-                          <input
-                            type="time"
-                            value={matchTeeTime}
-                            onChange={e => setMatchTeeTime(e.target.value)}
-                            className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
-                          />
-                        </div>
+            {/* Per-week match management */}
+            <div className="space-y-4">
+              {weeks.map(week => {
+                const weekMatches = matches?.filter(m => m.week_id === week.id) ?? []
+                return (
+                  <div key={week.id} className="bg-white rounded-lg shadow p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-900">
+                          Week {week.number} — {week.date}
+                        </p>
+                        <StatusBadge status={week.status} />
                       </div>
-                      {matchError && <p className="text-sm text-red-600">{matchError}</p>}
-                      <div className="flex gap-2">
-                        <button
-                          type="submit"
-                          disabled={addingMatch}
-                          className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800 disabled:opacity-60"
-                        >
-                          {addingMatch ? 'Saving...' : 'Save Match'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAddMatchWeekId(null)}
-                          className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-100"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  )}
-
-                  {weekMatches.length > 0 && (
-                    <div className="divide-y divide-gray-100">
-                      {weekMatches.map(match => (
-                        <div key={match.id} className="py-2 text-sm text-gray-700">
-                          {teamName_by_id(match.team_a_id)} vs {teamName_by_id(match.team_b_id)}
-                          {match.tee_time && (
-                            <span className="ml-2 text-gray-400">@ {match.tee_time}</span>
-                          )}
-                        </div>
-                      ))}
+                      <button
+                        onClick={() => openAddMatch(week.id)}
+                        className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800"
+                      >
+                        Add Match
+                      </button>
                     </div>
-                  )}
-                </div>
-              )
-            })}
+
+                    {/* Add match form for this week */}
+                    {addMatchWeekId === week.id && (
+                      <form onSubmit={handleAddMatch} className="border border-gray-200 rounded p-4 space-y-3 bg-gray-50">
+                        <h4 className="text-sm font-semibold text-gray-700">New Match</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Team A *</label>
+                            <select
+                              required
+                              value={matchTeamA}
+                              onChange={e => setMatchTeamA(e.target.value)}
+                              className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                            >
+                              <option value="">— select —</option>
+                              {teams?.map(t => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Team B *</label>
+                            <select
+                              required
+                              value={matchTeamB}
+                              onChange={e => setMatchTeamB(e.target.value)}
+                              className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                            >
+                              <option value="">— select —</option>
+                              {teams?.map(t => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Tee Time</label>
+                            <input
+                              type="time"
+                              value={matchTeeTime}
+                              onChange={e => setMatchTeeTime(e.target.value)}
+                              className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+                            />
+                          </div>
+                        </div>
+                        {matchError && <p className="text-sm text-red-600">{matchError}</p>}
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={addingMatch}
+                            className="bg-green-700 text-white px-3 py-1 rounded text-sm hover:bg-green-800 disabled:opacity-60"
+                          >
+                            {addingMatch ? 'Saving...' : 'Save Match'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAddMatchWeekId(null)}
+                            className="border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-100"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {weekMatches.length > 0 && (
+                      <div className="divide-y divide-gray-100">
+                        {weekMatches.map(match => (
+                          <div key={match.id} className="py-2 text-sm text-gray-700">
+                            {getTeamName(match.team_a_id)} vs {getTeamName(match.team_b_id)}
+                            {match.tee_time && (
+                              <span className="ml-2 text-gray-400">@ {match.tee_time}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

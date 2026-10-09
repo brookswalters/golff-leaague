@@ -3,6 +3,24 @@ import { useLeague } from '../../hooks/useLeague'
 import { supabase } from '../../lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
 
+function getLeagueDays(startDate: string, endDate: string, dayOfWeek: number): string[] {
+  // dayOfWeek: 0=Sun, 1=Mon, ..., 3=Wed, ..., 6=Sat
+  // Returns array of YYYY-MM-DD strings
+  const dates: string[] = []
+  const start = new Date(startDate + 'T12:00:00') // noon to avoid DST issues
+  const end = new Date(endDate + 'T12:00:00')
+  const current = new Date(start)
+  // Advance to first occurrence of dayOfWeek
+  while (current.getDay() !== dayOfWeek) {
+    current.setDate(current.getDate() + 1)
+  }
+  while (current <= end) {
+    dates.push(current.toISOString().split('T')[0])
+    current.setDate(current.getDate() + 7)
+  }
+  return dates
+}
+
 export default function AdminSettings() {
   const { data, isLoading } = useLeague()
   const queryClient = useQueryClient()
@@ -11,6 +29,7 @@ export default function AdminSettings() {
   const [year, setYear] = useState(new Date().getFullYear())
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [leagueDay, setLeagueDay] = useState(3) // 3 = Wednesday
   const [firstTeeTime, setFirstTeeTime] = useState('09:00')
   const [teeIntervalMin, setTeeIntervalMin] = useState(7)
   const [handicapRounds, setHandicapRounds] = useState(5)
@@ -21,6 +40,7 @@ export default function AdminSettings() {
 
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [weeksNote, setWeeksNote] = useState<string | null>(null)
 
   useEffect(() => {
     if (data) {
@@ -42,12 +62,13 @@ export default function AdminSettings() {
 
   function showToast(type: 'success' | 'error', message: string) {
     setToast({ type, message })
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 4000)
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setWeeksNote(null)
 
     try {
       let leagueId = data?.league?.id
@@ -82,19 +103,57 @@ export default function AdminSettings() {
         skins_carryover: skinsCarryover,
       }
 
-      if (data?.season?.id) {
+      let seasonId: string | undefined = data?.season?.id
+
+      if (seasonId) {
         const { error } = await supabase
           .from('seasons')
           .update(seasonData)
-          .eq('id', data.season.id)
+          .eq('id', seasonId)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('seasons').insert(seasonData)
+        const { data: newSeason, error } = await supabase
+          .from('seasons')
+          .insert(seasonData)
+          .select()
+          .single()
         if (error) throw error
+        seasonId = newSeason.id
+      }
+
+      // Auto-generate weeks if start_date and end_date are set
+      let toastMessage = 'Settings saved successfully.'
+      if (startDate && endDate && seasonId) {
+        // Check if weeks already exist for this season
+        const { data: existingWeeks, error: weeksCheckError } = await supabase
+          .from('weeks')
+          .select('id')
+          .eq('season_id', seasonId)
+          .limit(1)
+
+        if (weeksCheckError) throw weeksCheckError
+
+        if (existingWeeks && existingWeeks.length > 0) {
+          setWeeksNote('Weeks already generated. Manage them in the Schedule tab.')
+        } else {
+          const dates = getLeagueDays(startDate, endDate, leagueDay)
+          if (dates.length > 0) {
+            const weekRows = dates.map((date, i) => ({
+              season_id: seasonId as string,
+              number: i + 1,
+              date,
+              status: 'scheduled',
+            }))
+            const { error: insertError } = await supabase.from('weeks').insert(weekRows)
+            if (insertError) throw insertError
+            toastMessage = `Season saved. ${dates.length} week${dates.length === 1 ? '' : 's'} generated.`
+            await queryClient.invalidateQueries({ queryKey: ['weeks', seasonId] })
+          }
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ['league'] })
-      showToast('success', 'Settings saved successfully.')
+      showToast('success', toastMessage)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An error occurred'
       showToast('error', message)
@@ -118,6 +177,12 @@ export default function AdminSettings() {
           }`}
         >
           {toast.message}
+        </div>
+      )}
+
+      {weeksNote && (
+        <div className="rounded p-3 text-sm bg-blue-50 border border-blue-200 text-blue-800">
+          {weeksNote}
         </div>
       )}
 
@@ -178,6 +243,22 @@ export default function AdminSettings() {
                 onChange={e => setEndDate(e.target.value)}
                 className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">League Day</label>
+              <select
+                value={leagueDay}
+                onChange={e => setLeagueDay(Number(e.target.value))}
+                className="border border-gray-300 rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-700"
+              >
+                <option value={1}>Monday</option>
+                <option value={2}>Tuesday</option>
+                <option value={3}>Wednesday</option>
+                <option value={4}>Thursday</option>
+                <option value={5}>Friday</option>
+                <option value={6}>Saturday</option>
+                <option value={0}>Sunday</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tee Interval (minutes)</label>
@@ -243,6 +324,12 @@ export default function AdminSettings() {
               <span className="text-sm font-medium text-gray-700">Skins Carryover</span>
             </label>
           </div>
+
+          {(startDate && endDate) && (
+            <p className="text-xs text-gray-500">
+              Weeks will be auto-generated on save if none exist yet for this season.
+            </p>
+          )}
         </div>
 
         <button

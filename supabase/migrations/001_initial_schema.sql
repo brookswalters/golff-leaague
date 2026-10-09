@@ -2,14 +2,14 @@
 create extension if not exists "uuid-ossp";
 
 -- Leagues
-create table leagues (
+create table if not exists leagues (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
   created_at timestamptz default now()
 );
 
 -- Seasons
-create table seasons (
+create table if not exists seasons (
   id uuid primary key default uuid_generate_v4(),
   league_id uuid references leagues(id) on delete cascade,
   year int not null,
@@ -28,18 +28,18 @@ create table seasons (
 );
 
 -- Players
-create table players (
+create table if not exists players (
   id uuid primary key default uuid_generate_v4(),
   league_id uuid references leagues(id) on delete cascade,
   name text not null,
   email text,
-  is_senior boolean not null default false, -- 65 and over = gold tees both nines
+  is_senior boolean not null default false,
   active boolean not null default true,
   created_at timestamptz default now()
 );
 
 -- Teams
-create table teams (
+create table if not exists teams (
   id uuid primary key default uuid_generate_v4(),
   season_id uuid references seasons(id) on delete cascade,
   name text not null,
@@ -50,18 +50,18 @@ create table teams (
 );
 
 -- Weeks
-create table weeks (
+create table if not exists weeks (
   id uuid primary key default uuid_generate_v4(),
   season_id uuid references seasons(id) on delete cascade,
   number int not null,
   date date not null,
-  status text not null default 'scheduled', -- scheduled | complete | rainout
+  status text not null default 'scheduled',
   created_at timestamptz default now(),
   unique(season_id, number)
 );
 
 -- Matches
-create table matches (
+create table if not exists matches (
   id uuid primary key default uuid_generate_v4(),
   week_id uuid references weeks(id) on delete cascade,
   team_a_id uuid references teams(id),
@@ -71,7 +71,7 @@ create table matches (
 );
 
 -- Match players (snapshot of handicap used)
-create table match_players (
+create table if not exists match_players (
   id uuid primary key default uuid_generate_v4(),
   match_id uuid references matches(id) on delete cascade,
   player_id uuid references players(id),
@@ -84,7 +84,7 @@ create table match_players (
 );
 
 -- Scores (one row per player per round hole 1–18)
-create table scores (
+create table if not exists scores (
   id uuid primary key default uuid_generate_v4(),
   match_player_id uuid references match_players(id) on delete cascade,
   hole_number int not null check (hole_number between 1 and 18),
@@ -93,19 +93,19 @@ create table scores (
 );
 
 -- Handicap history (snapshot per player per week)
-create table handicap_history (
+create table if not exists handicap_history (
   id uuid primary key default uuid_generate_v4(),
   player_id uuid references players(id) on delete cascade,
   season_id uuid references seasons(id) on delete cascade,
   week_number int not null,
   handicap int not null,
-  gross_score int, -- the score from that week (null if absent)
+  gross_score int,
   created_at timestamptz default now(),
   unique(player_id, season_id, week_number)
 );
 
 -- Match results cache (recomputable)
-create table match_results (
+create table if not exists match_results (
   id uuid primary key default uuid_generate_v4(),
   match_id uuid references matches(id) on delete cascade unique,
   team_a_points numeric not null default 0,
@@ -122,7 +122,7 @@ create table match_results (
 );
 
 -- Skins results cache
-create table skins_results (
+create table if not exists skins_results (
   id uuid primary key default uuid_generate_v4(),
   week_id uuid references weeks(id) on delete cascade,
   player_id uuid references players(id),
@@ -133,7 +133,7 @@ create table skins_results (
 );
 
 -- Skins opt-ins per week
-create table skins_optins (
+create table if not exists skins_optins (
   id uuid primary key default uuid_generate_v4(),
   week_id uuid references weeks(id) on delete cascade,
   player_id uuid references players(id),
@@ -154,32 +154,78 @@ alter table match_results enable row level security;
 alter table skins_results enable row level security;
 alter table skins_optins enable row level security;
 
--- Public read policies (anyone can read)
-create policy "public read" on leagues for select using (true);
-create policy "public read" on seasons for select using (true);
-create policy "public read" on players for select using (true);
-create policy "public read" on teams for select using (true);
-create policy "public read" on weeks for select using (true);
-create policy "public read" on matches for select using (true);
-create policy "public read" on match_players for select using (true);
-create policy "public read" on scores for select using (true);
-create policy "public read" on handicap_history for select using (true);
-create policy "public read" on match_results for select using (true);
-create policy "public read" on skins_results for select using (true);
-create policy "public read" on skins_optins for select using (true);
+-- Public read policies
+do $$ begin
+  create policy "public read" on leagues for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on seasons for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on players for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on teams for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on weeks for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on matches for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on match_players for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on scores for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on handicap_history for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on match_results for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on skins_results for select using (true);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "public read" on skins_optins for select using (true);
+exception when duplicate_object then null; end $$;
 
--- Admin write policies (service role bypasses RLS; for anon key with admin check, we use a simple approach)
--- For now: allow all inserts/updates/deletes from authenticated users
--- (Admin logs in via Supabase magic link, so they are "authenticated")
-create policy "admin write" on leagues for all using (auth.role() = 'authenticated');
-create policy "admin write" on seasons for all using (auth.role() = 'authenticated');
-create policy "admin write" on players for all using (auth.role() = 'authenticated');
-create policy "admin write" on teams for all using (auth.role() = 'authenticated');
-create policy "admin write" on weeks for all using (auth.role() = 'authenticated');
-create policy "admin write" on matches for all using (auth.role() = 'authenticated');
-create policy "admin write" on match_players for all using (auth.role() = 'authenticated');
-create policy "admin write" on scores for all using (auth.role() = 'authenticated');
-create policy "admin write" on handicap_history for all using (auth.role() = 'authenticated');
-create policy "admin write" on match_results for all using (auth.role() = 'authenticated');
-create policy "admin write" on skins_results for all using (auth.role() = 'authenticated');
-create policy "admin write" on skins_optins for all using (auth.role() = 'authenticated');
+-- Admin write policies
+do $$ begin
+  create policy "admin write" on leagues for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on seasons for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on players for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on teams for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on weeks for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on matches for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on match_players for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on scores for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on handicap_history for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on match_results for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on skins_results for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
+do $$ begin
+  create policy "admin write" on skins_optins for all using (auth.role() = 'authenticated');
+exception when duplicate_object then null; end $$;
